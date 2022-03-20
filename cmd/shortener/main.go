@@ -30,9 +30,9 @@ func base10ToBase62(id int64) string {
 }
 
 func base62ToBase10(str string) int64 {
-	bigId := new(big.Int)
-	bigId.SetString(str, 62)
-	id := bigId.Int64()
+	bigID := new(big.Int)
+	bigID.SetString(str, 62)
+	id := bigID.Int64()
 	//fmt.Println(id)
 	return id
 }
@@ -40,8 +40,8 @@ func base62ToBase10(str string) int64 {
 func rootHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
-		shortUrl := strings.TrimPrefix(req.URL.Path, "/")
-		id := base62ToBase10(shortUrl)
+		shortURL := strings.TrimPrefix(req.URL.Path, "/")
+		id := base62ToBase10(shortURL)
 		var url string
 		err := db.QueryRow("select url from links WHERE id = ?", id).Scan(&url)
 		if err != nil {
@@ -66,9 +66,9 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 		url := originalUrl.Url
 		fmt.Println(url)*/
 
-		originalUrl := string(b)
+		originalURL := string(b)
 
-		result, err := db.Exec("insert into links (url) values (?)", originalUrl)
+		result, err := db.Exec("insert into links (url) values (?)", originalURL)
 		if err != nil {
 			fmt.Println(err)
 		}
