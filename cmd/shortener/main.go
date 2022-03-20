@@ -80,7 +80,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 
 		shortURL := base10ToBase62(id)
 		//w.Header().Set("content-type", "application/json")
-		w.Header().Set("content-type", "text/plain")
+		w.Header().Set("content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
 		/*shortUrl := ShortUrl{shortLink}
