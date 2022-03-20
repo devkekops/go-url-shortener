@@ -78,7 +78,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 		}
 		//fmt.Println(id)
 
-		shortUrl := base10ToBase62(id)
+		shortURL := base10ToBase62(id)
 		//w.Header().Set("content-type", "application/json")
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -89,7 +89,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 			fmt.Println(err)
 		}*/
 
-		w.Write([]byte(shortUrl))
+		w.Write([]byte(shortURL))
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
