@@ -48,7 +48,6 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 			fmt.Println(err)
 		}
 		//fmt.Println(url)
-
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
@@ -80,7 +79,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 
 		shortURL := base10ToBase62(id)
 		//w.Header().Set("content-type", "application/json")
-		w.Header().Set("content-type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
 		/*shortUrl := ShortUrl{shortLink}
@@ -89,7 +88,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 			fmt.Println(err)
 		}*/
 
-		w.Write([]byte(shortURL))
+		w.Write([]byte("http://localhost:8080/" + shortURL))
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
