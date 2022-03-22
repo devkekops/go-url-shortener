@@ -15,7 +15,6 @@ type BaseHandler struct {
 	linkRepo storage.LinkRepository
 }
 
-// NewBaseHandler returns a new BaseHandler
 func NewBaseHandler(linkRepo storage.LinkRepository) *BaseHandler {
 	return &BaseHandler{
 		linkRepo: linkRepo,
@@ -26,6 +25,10 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		shortURL := strings.TrimPrefix(req.URL.Path, "/")
+		if !util.IsLetterOrNumber(shortURL) {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
 		id := util.Base62ToBase10(shortURL)
 		url, err := h.linkRepo.FindByID(id)
 		if err != nil {
@@ -46,6 +49,13 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 			fmt.Println(err)
 		}
 		originalURL := string(b)
+
+		if !util.IsValidURL(originalURL) {
+			http.Error(w, "URL is incorrect", http.StatusBadRequest)
+			fmt.Printf("Incorrect URL %s\n", originalURL)
+			return
+		}
+
 		id, err := h.linkRepo.Save(originalURL)
 		if err != nil {
 			fmt.Println(err)
