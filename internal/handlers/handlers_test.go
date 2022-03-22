@@ -47,7 +47,7 @@ func (mr *MockedLinkRepo) Save(link string) (int64, error) {
 func TestRootHandler(t *testing.T) {
 	idToLinkMap := make(map[int64]string)
 	linkRepo := NewMockedLinkRepo(idToLinkMap)
-	bh := handlers.NewBaseHandler(linkRepo)
+	s := handlers.NewServer(linkRepo)
 
 	type want struct {
 		code        int
@@ -129,7 +129,7 @@ func TestRootHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(bh.RootHandler)
+			h := http.HandlerFunc(s.RootHandler)
 			h.ServeHTTP(w, request)
 			res := w.Result()
 

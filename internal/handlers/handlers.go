@@ -11,17 +11,17 @@ import (
 	"github.com/devkekops/go-url-shortener/internal/util"
 )
 
-type BaseHandler struct {
+type Server struct {
 	linkRepo storage.LinkRepository
 }
 
-func NewBaseHandler(linkRepo storage.LinkRepository) *BaseHandler {
-	return &BaseHandler{
+func NewServer(linkRepo storage.LinkRepository) *Server {
+	return &Server{
 		linkRepo: linkRepo,
 	}
 }
 
-func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) RootHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		shortURL := strings.TrimPrefix(req.URL.Path, "/")
@@ -30,7 +30,7 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		id := util.Base62ToBase10(shortURL)
-		url, err := h.linkRepo.FindByID(id)
+		url, err := s.linkRepo.FindByID(id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Not found", http.StatusNotFound)
@@ -56,7 +56,7 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		id, err := h.linkRepo.Save(originalURL)
+		id, err := s.linkRepo.Save(originalURL)
 		if err != nil {
 			fmt.Println(err)
 		}

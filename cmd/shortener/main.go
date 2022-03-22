@@ -30,8 +30,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	h := handlers.NewBaseHandler(linkRepo)
+	server := handlers.NewServer(linkRepo)
 
-	http.HandleFunc("/", h.RootHandler)
+	http.HandleFunc("/", server.RootHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
