@@ -4,6 +4,18 @@ import (
 	"database/sql"
 )
 
+func (r *LinkRepo) Migrate() error {
+	query := `
+    CREATE TABLE IF NOT EXISTS links(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL
+    );
+    `
+	_, err := r.db.Exec(query)
+
+	return err
+}
+
 //model
 type LinkRepository interface {
 	FindByID(id int64) (string, error)
@@ -19,18 +31,6 @@ func NewLinkRepo(db *sql.DB) *LinkRepo {
 	return &LinkRepo{
 		db: db,
 	}
-}
-
-func (r *LinkRepo) Migrate() error {
-	query := `
-    CREATE TABLE IF NOT EXISTS links(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT NOT NULL
-    );
-    `
-	_, err := r.db.Exec(query)
-
-	return err
 }
 
 func (r *LinkRepo) FindByID(id int64) (string, error) {

@@ -30,8 +30,9 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 		url, err := h.linkRepo.FindByID(id)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				http.Error(w, "not found", http.StatusNotFound)
-				fmt.Println(err)
+				http.Error(w, "Not found", http.StatusNotFound)
+				fmt.Printf("Not found row number %d\n", id)
+				return
 			}
 			fmt.Println(err)
 		}
@@ -56,7 +57,8 @@ func (h *BaseHandler) RootHandler(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("http://localhost:8080/" + shortURL))
 
 	default:
-		w.WriteHeader(http.StatusBadRequest)
+		//w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Only GET and POST requests are allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }

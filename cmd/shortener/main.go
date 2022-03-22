@@ -12,13 +12,13 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const fileName = "links.db"
+const dbFileName = "links.db"
 
 func main() {
-	os.Remove(fileName)
+	os.Remove(dbFileName)
 
 	var err error
-	db, err := sql.Open("sqlite3", fileName)
+	db, err := sql.Open("sqlite3", dbFileName)
 	if err != nil {
 		fmt.Println(err)
 		return
