@@ -44,10 +44,35 @@ func (mr *MockedLinkRepo) Save(link string) (int64, error) {
 	return int64(index), nil
 }
 
-func TestRootHandler(t *testing.T) {
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
+
+	//disable autoredirects
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+}
+
+func TestServer(t *testing.T) {
 	idToLinkMap := make(map[int64]string)
 	linkRepo := NewMockedLinkRepo(idToLinkMap)
 	s := handlers.NewServer(linkRepo)
+
+	ts := httptest.NewServer(s)
+	defer ts.Close()
 
 	type want struct {
 		code        int
@@ -98,15 +123,13 @@ func TestRootHandler(t *testing.T) {
 			path:   "/",
 			body:   "put test body",
 			want: want{
-				code:        405,
-				contentType: "text/plain; charset=utf-8",
-				body:        "Only GET and POST requests are allowed\n",
+				code: 405,
 			},
 		},
 		{
 			name:   "GET incorrect request #1",
 			method: "GET",
-			path:   "/#",
+			path:   "/$",
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
@@ -127,21 +150,11 @@ func TestRootHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(s.RootHandler)
-			h.ServeHTTP(w, request)
-			res := w.Result()
+			resp, body := testRequest(t, ts, tt.method, tt.path, tt.body)
 
-			assert.Equal(t, tt.want.code, res.StatusCode)
-			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
-			assert.Equal(t, tt.want.location, res.Header.Get("Location"))
-
-			bodyBytes, err := ioutil.ReadAll(res.Body)
-			require.NoError(t, err)
-			err = res.Body.Close()
-			require.NoError(t, err)
-			body := string(bodyBytes)
+			assert.Equal(t, tt.want.code, resp.StatusCode)
+			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
+			assert.Equal(t, tt.want.location, resp.Header.Get("Location"))
 			assert.Equal(t, tt.want.body, body)
 		})
 	}
