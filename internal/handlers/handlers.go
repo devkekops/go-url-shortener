@@ -9,6 +9,7 @@ import (
 	"github.com/devkekops/go-url-shortener/internal/storage"
 	"github.com/devkekops/go-url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
@@ -21,6 +22,12 @@ func NewServer(linkRepo storage.LinkRepository) *Server {
 		Mux:      chi.NewMux(),
 		linkRepo: linkRepo,
 	}
+
+	s.Use(middleware.RequestID)
+	s.Use(middleware.RealIP)
+	s.Use(middleware.Logger)
+	s.Use(middleware.Recoverer)
+
 	s.Post("/", s.shortenLink())
 	s.Get("/{id}", s.expandLink())
 
