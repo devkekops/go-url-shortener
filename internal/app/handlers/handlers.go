@@ -39,7 +39,9 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			fmt.Println(err)
+			return
 		}
 		originalURL := string(b)
 
@@ -71,6 +73,7 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
 			fmt.Printf("Not found row number %d\n", id)
+			return
 		}
 
 		w.Header().Set("Location", url)
