@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/devkekops/go-url-shortener/internal/handlers"
+	"github.com/devkekops/go-url-shortener/internal/app/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,13 +35,13 @@ func (mr *MockedLinkRepo) FindByID(id int64) (string, error) {
 	return url, nil
 }
 
-func (mr *MockedLinkRepo) Save(link string) (int64, error) {
+func (mr *MockedLinkRepo) Save(link string) int64 {
 	index := len(mr.idToLinkMap) + 1
 	mr.idToLinkMap[int64(index)] = link
 	//fmt.Printf("Save %s with index %d\n", link, index)
 	//fmt.Println(mr.idToLinkMap)
 
-	return int64(index), nil
+	return int64(index)
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
@@ -57,11 +57,10 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-
-	defer resp.Body.Close()
 
 	return resp, string(respBody)
 }
@@ -69,7 +68,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 func TestServer(t *testing.T) {
 	idToLinkMap := make(map[int64]string)
 	linkRepo := NewMockedLinkRepo(idToLinkMap)
-	s := handlers.NewServer(linkRepo)
+	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080/")
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()

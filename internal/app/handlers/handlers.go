@@ -1,40 +1,41 @@
 package handlers
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/devkekops/go-url-shortener/internal/storage"
-	"github.com/devkekops/go-url-shortener/internal/util"
+	"github.com/devkekops/go-url-shortener/internal/app/storage"
+	"github.com/devkekops/go-url-shortener/internal/app/util"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type Server struct {
+type BaseHandler struct {
 	*chi.Mux
 	linkRepo storage.LinkRepository
+	origin   string
 }
 
-func NewServer(linkRepo storage.LinkRepository) *Server {
-	s := &Server{
+func NewBaseHandler(linkRepo storage.LinkRepository, origin string) *BaseHandler {
+	bh := &BaseHandler{
 		Mux:      chi.NewMux(),
 		linkRepo: linkRepo,
+		origin:   origin,
 	}
 
-	s.Use(middleware.RequestID)
-	s.Use(middleware.RealIP)
-	s.Use(middleware.Logger)
-	s.Use(middleware.Recoverer)
+	bh.Use(middleware.RequestID)
+	bh.Use(middleware.RealIP)
+	bh.Use(middleware.Logger)
+	bh.Use(middleware.Recoverer)
 
-	s.Post("/", s.shortenLink())
-	s.Get("/{id}", s.expandLink())
+	bh.Post("/", bh.shortenLink())
+	bh.Get("/{id}", bh.expandLink())
 
-	return s
+	return bh
 }
 
-func (s *Server) shortenLink() http.HandlerFunc {
+func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -48,19 +49,16 @@ func (s *Server) shortenLink() http.HandlerFunc {
 			return
 		}
 
-		id, err := s.linkRepo.Save(originalURL)
-		if err != nil {
-			fmt.Println(err)
-		}
+		id := bh.linkRepo.Save(originalURL)
 		shortURL := util.Base10ToBase62(id)
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("http://localhost:8080/" + shortURL))
+		w.Write([]byte(bh.origin + shortURL))
 	}
 }
 
-func (s *Server) expandLink() http.HandlerFunc {
+func (bh *BaseHandler) expandLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		shortURL := chi.URLParam(req, "id")
 		if !util.IsLetterOrNumber(shortURL) {
@@ -69,14 +67,10 @@ func (s *Server) expandLink() http.HandlerFunc {
 		}
 
 		id := util.Base62ToBase10(shortURL)
-		url, err := s.linkRepo.FindByID(id)
+		url, err := bh.linkRepo.FindByID(id)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				http.Error(w, "Not found", http.StatusNotFound)
-				fmt.Printf("Not found row number %d\n", id)
-				return
-			}
-			fmt.Println(err)
+			http.Error(w, "Not found", http.StatusNotFound)
+			fmt.Printf("Not found row number %d\n", id)
 		}
 
 		w.Header().Set("Location", url)
