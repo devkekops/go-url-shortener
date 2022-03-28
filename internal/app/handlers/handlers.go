@@ -65,6 +65,7 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 		shortURL := chi.URLParam(req, "id")
 		if !util.IsLetterOrNumber(shortURL) {
 			http.Error(w, "Bad request", http.StatusBadRequest)
+			fmt.Printf("Incorrect URL %s\n", shortURL)
 			return
 		}
 
