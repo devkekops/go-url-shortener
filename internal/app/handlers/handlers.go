@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -12,6 +14,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+type URL struct {
+	URL string `json:"url"`
+}
+
+type Result struct {
+	Result string `json:"result"`
+}
+
+type BaseHandler struct {
+	*chi.Mux
+	linkRepo storage.LinkRepository
+	origin   string
+}
 
 func isLetterOrNumber(s string) bool {
 	for _, r := range s {
@@ -39,12 +55,6 @@ func base62ToBase10(str string) int64 {
 	return id
 }
 
-type BaseHandler struct {
-	*chi.Mux
-	linkRepo storage.LinkRepository
-	origin   string
-}
-
 func NewBaseHandler(linkRepo storage.LinkRepository, origin string) *BaseHandler {
 	bh := &BaseHandler{
 		Mux:      chi.NewMux(),
@@ -59,6 +69,7 @@ func NewBaseHandler(linkRepo storage.LinkRepository, origin string) *BaseHandler
 
 	bh.Post("/", bh.shortenLink())
 	bh.Get("/{id}", bh.expandLink())
+	bh.Post("/api/shorten", bh.apiShorten())
 
 	return bh
 }
@@ -78,7 +89,6 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 			fmt.Printf("Incorrect URL %s\n", originalURL)
 			return
 		}
-
 		id := bh.linkRepo.Save(originalURL)
 		shortURL := base10ToBase62(id)
 
@@ -107,5 +117,33 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
+
+func (bh *BaseHandler) apiShorten() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		var link URL
+		if err := json.NewDecoder(req.Body).Decode(&link); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			fmt.Printf("Incorrect JSON\n")
+			return
+		}
+		originalURL := link.URL
+
+		if !isValidURL(originalURL) {
+			http.Error(w, "URL is incorrect", http.StatusBadRequest)
+			fmt.Printf("Incorrect URL %s\n", originalURL)
+			return
+		}
+		id := bh.linkRepo.Save(originalURL)
+		shortURL := base10ToBase62(id)
+
+		r := Result{bh.origin + shortURL}
+		var buf bytes.Buffer
+		json.NewEncoder(&buf).Encode(r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(buf.Bytes())
 	}
 }

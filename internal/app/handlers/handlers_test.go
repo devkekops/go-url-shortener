@@ -62,7 +62,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return resp, string(respBody)
+	respBodyStr := strings.TrimSuffix(string(respBody), "\n")
+
+	return resp, respBodyStr
 }
 
 func TestServer(t *testing.T) {
@@ -87,7 +89,7 @@ func TestServer(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "positive POST test",
+			name:   "POST / positive",
 			method: "POST",
 			path:   "/",
 			body:   "https://yandex.ru",
@@ -98,7 +100,18 @@ func TestServer(t *testing.T) {
 			},
 		},
 		{
-			name:   "positive GET test",
+			name:   "POST / incorrect URL",
+			method: "POST",
+			path:   "/",
+			body:   "http/yandexru",
+			want: want{
+				code:        400,
+				contentType: "text/plain; charset=utf-8",
+				body:        "URL is incorrect",
+			},
+		},
+		{
+			name:   "GET /1 positive",
 			method: "GET",
 			path:   "/1",
 			want: want{
@@ -107,17 +120,27 @@ func TestServer(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET non-existent link",
+			name:   "GET /abc2 non-existent link",
 			method: "GET",
 			path:   "/abc2",
 			want: want{
 				code:        404,
 				contentType: "text/plain; charset=utf-8",
-				body:        "Not found\n",
+				body:        "Not found",
 			},
 		},
 		{
-			name:   "PUT request",
+			name:   "GET /$ incorrect request",
+			method: "GET",
+			path:   "/$",
+			want: want{
+				code:        400,
+				contentType: "text/plain; charset=utf-8",
+				body:        "Bad request",
+			},
+		},
+		{
+			name:   "PUT / request",
 			method: "PUT",
 			path:   "/",
 			body:   "put test body",
@@ -126,24 +149,36 @@ func TestServer(t *testing.T) {
 			},
 		},
 		{
-			name:   "GET incorrect request #1",
-			method: "GET",
-			path:   "/$",
+			name:   "POST /api/shorten positive",
+			method: "POST",
+			path:   "/api/shorten",
+			body:   `{"url":"https://sberbank.ru"}`,
 			want: want{
-				code:        400,
-				contentType: "text/plain; charset=utf-8",
-				body:        "Bad request\n",
+				code:        201,
+				contentType: "application/json",
+				body:        `{"result":"http://localhost:8080/2"}`,
 			},
 		},
 		{
-			name:   "POST non-URL string",
+			name:   "POST /api/shorten incorrect JSON",
 			method: "POST",
-			path:   "/",
-			body:   "http/yandexru",
+			path:   "/api/shorten",
+			body:   `{"url":https://sberbank.ru}`,
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
-				body:        "URL is incorrect\n",
+				body:        "Bad request",
+			},
+		},
+		{
+			name:   "POST /api/shorten incorrect URL",
+			method: "POST",
+			path:   "/api/shorten",
+			body:   `{"url":"http/sberbankru"}`,
+			want: want{
+				code:        400,
+				contentType: "text/plain; charset=utf-8",
+				body:        "URL is incorrect",
 			},
 		},
 	}
