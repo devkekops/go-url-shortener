@@ -7,14 +7,13 @@ import (
 	"github.com/devkekops/go-url-shortener/internal/app/storage"
 )
 
-func Serve(addr string) error {
+func Serve(serverAddress string, baseURL string) error {
 	db := make(map[int64]string)
 	linkRepo := storage.NewLinkRepo(db)
 
-	origin := "http://" + addr + "/"
-	baseHandler := handlers.NewBaseHandler(linkRepo, origin)
+	baseHandler := handlers.NewBaseHandler(linkRepo, baseURL)
 	server := &http.Server{
-		Addr:    addr,
+		Addr:    serverAddress,
 		Handler: baseHandler,
 	}
 
