@@ -70,7 +70,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 func TestServer(t *testing.T) {
 	idToLinkMap := make(map[int64]string)
 	linkRepo := NewMockedLinkRepo(idToLinkMap)
-	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080/")
+	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080")
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()

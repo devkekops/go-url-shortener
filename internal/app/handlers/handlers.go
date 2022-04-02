@@ -26,7 +26,7 @@ type Result struct {
 type BaseHandler struct {
 	*chi.Mux
 	linkRepo storage.LinkRepository
-	origin   string
+	baseURL  string
 }
 
 func isLetterOrNumber(s string) bool {
@@ -55,11 +55,11 @@ func base62ToBase10(str string) int64 {
 	return id
 }
 
-func NewBaseHandler(linkRepo storage.LinkRepository, origin string) *BaseHandler {
+func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string) *BaseHandler {
 	bh := &BaseHandler{
 		Mux:      chi.NewMux(),
 		linkRepo: linkRepo,
-		origin:   origin,
+		baseURL:  baseURL,
 	}
 
 	bh.Use(middleware.RequestID)
@@ -94,7 +94,7 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(bh.origin + shortURL))
+		w.Write([]byte(bh.baseURL + "/" + shortURL))
 	}
 }
 
@@ -138,7 +138,7 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 		id := bh.linkRepo.Save(originalURL)
 		shortURL := base10ToBase62(id)
 
-		r := Result{bh.origin + shortURL}
+		r := Result{bh.baseURL + "/" + shortURL}
 		var buf bytes.Buffer
 		json.NewEncoder(&buf).Encode(r)
 
