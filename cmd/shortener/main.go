@@ -13,7 +13,7 @@ type Config struct {
 }
 
 func main() {
-	cfg := Config{"localhost:8080", "http://localhost:8080/"}
+	cfg := Config{"localhost:8080", "http://localhost:8080"}
 
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatal(err)
