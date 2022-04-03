@@ -1,7 +1,7 @@
 package handlers_test
 
 import (
-	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,17 +17,16 @@ type MockedLinkRepo struct {
 	idToLinkMap map[int64]string
 }
 
-func NewMockedLinkRepo(idToLinkMap map[int64]string) *MockedLinkRepo {
+func NewMockedLinkRepo() *MockedLinkRepo {
 	return &MockedLinkRepo{
-		idToLinkMap: idToLinkMap,
+		idToLinkMap: make(map[int64]string),
 	}
 }
 
 func (mr *MockedLinkRepo) FindByID(id int64) (string, error) {
 	url, exist := mr.idToLinkMap[id]
 	if exist == false {
-		err := sql.ErrNoRows
-		return "", err
+		return "", fmt.Errorf("not found row %d", id)
 	}
 	//fmt.Printf("FindById %d url %s\n", id, url)
 	//fmt.Println(mr.idToLinkMap)
@@ -35,13 +34,13 @@ func (mr *MockedLinkRepo) FindByID(id int64) (string, error) {
 	return url, nil
 }
 
-func (mr *MockedLinkRepo) Save(link string) int64 {
+func (mr *MockedLinkRepo) Save(link string) (int64, error) {
 	index := len(mr.idToLinkMap) + 1
 	mr.idToLinkMap[int64(index)] = link
 	//fmt.Printf("Save %s with index %d\n", link, index)
 	//fmt.Println(mr.idToLinkMap)
 
-	return int64(index)
+	return int64(index), nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
@@ -68,8 +67,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func TestServer(t *testing.T) {
-	idToLinkMap := make(map[int64]string)
-	linkRepo := NewMockedLinkRepo(idToLinkMap)
+	linkRepo := NewMockedLinkRepo()
 	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080")
 
 	ts := httptest.NewServer(s)

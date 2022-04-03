@@ -3,8 +3,8 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -79,17 +79,22 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 		originalURL := string(b)
-
 		if !isValidURL(originalURL) {
 			http.Error(w, "URL is incorrect", http.StatusBadRequest)
-			fmt.Printf("Incorrect URL %s\n", originalURL)
+			log.Printf("Incorrect URL %s\n", originalURL)
 			return
 		}
-		id := bh.linkRepo.Save(originalURL)
+
+		id, err := bh.linkRepo.Save(originalURL)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
 		shortURL := base10ToBase62(id)
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -103,7 +108,7 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 		shortURL := chi.URLParam(req, "id")
 		if !isLetterOrNumber(shortURL) {
 			http.Error(w, "Bad request", http.StatusBadRequest)
-			fmt.Printf("Incorrect URL %s\n", shortURL)
+			log.Printf("Incorrect URL %s\n", shortURL)
 			return
 		}
 
@@ -111,7 +116,7 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 		url, err := bh.linkRepo.FindByID(id)
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
-			fmt.Printf("Not found row number %d\n", id)
+			log.Printf("Not found row number %d\n", id)
 			return
 		}
 
@@ -125,17 +130,22 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 		var link URL
 		if err := json.NewDecoder(req.Body).Decode(&link); err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
-			fmt.Printf("Incorrect JSON\n")
+			log.Printf("Incorrect JSON\n")
 			return
 		}
 		originalURL := link.URL
-
 		if !isValidURL(originalURL) {
 			http.Error(w, "URL is incorrect", http.StatusBadRequest)
-			fmt.Printf("Incorrect URL %s\n", originalURL)
+			log.Printf("Incorrect URL %s\n", originalURL)
 			return
 		}
-		id := bh.linkRepo.Save(originalURL)
+
+		id, err := bh.linkRepo.Save(originalURL)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
 		shortURL := base10ToBase62(id)
 
 		r := Result{bh.baseURL + "/" + shortURL}
