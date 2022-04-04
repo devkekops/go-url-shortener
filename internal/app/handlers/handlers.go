@@ -67,6 +67,8 @@ func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string) *BaseHandle
 	bh.Use(middleware.Logger)
 	bh.Use(middleware.Recoverer)
 
+	bh.Use(middleware.Compress(5))
+
 	bh.Post("/", bh.shortenLink())
 	bh.Get("/{id}", bh.expandLink())
 	bh.Post("/api/shorten", bh.apiShorten())
