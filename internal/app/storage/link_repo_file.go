@@ -29,7 +29,8 @@ func NewLinkRepoFile(filename string) (*LinkRepoFile, error) {
 	decoder := json.NewDecoder(file)
 	for {
 		URLEntry := URLEntry{}
-		if err := decoder.Decode(&URLEntry); err == io.EOF {
+		err := decoder.Decode(&URLEntry)
+		if err == io.EOF {
 			break
 		} else if err != nil {
 			return nil, err
