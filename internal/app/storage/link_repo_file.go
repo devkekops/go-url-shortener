@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 type URLEntry struct {
@@ -13,6 +14,7 @@ type URLEntry struct {
 }
 
 type LinkRepoFile struct {
+	mutex       sync.RWMutex
 	file        *os.File
 	encoder     *json.Encoder
 	idToLinkMap map[int64]string
@@ -39,6 +41,7 @@ func NewLinkRepoFile(filename string) (*LinkRepoFile, error) {
 	}
 
 	return &LinkRepoFile{
+		mutex:       sync.RWMutex{},
 		file:        file,
 		encoder:     json.NewEncoder(file),
 		idToLinkMap: idToLinkMap,
@@ -50,6 +53,9 @@ func (r *LinkRepoFile) Close() error {
 }
 
 func (r *LinkRepoFile) FindByID(id int64) (string, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
 	url, exist := r.idToLinkMap[id]
 	if !exist {
 		return "", fmt.Errorf("not found row %d", id)
@@ -58,6 +64,9 @@ func (r *LinkRepoFile) FindByID(id int64) (string, error) {
 }
 
 func (r *LinkRepoFile) Save(link string) (int64, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	index := len(r.idToLinkMap) + 1
 	id := int64(index)
 	r.idToLinkMap[id] = link
