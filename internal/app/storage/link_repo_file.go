@@ -50,16 +50,16 @@ func (r *LinkRepoFile) SaveLongLink(link string, userID string) (string, error) 
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	shortURL, err := r.linkRepoMemory.SaveLongLink(link, userID)
+	shortURL, _ := r.linkRepoMemory.SaveLongLink(link, userID)
 	linkID := base62ToBase10(shortURL)
 
 	URLEntry := URLEntry{linkID, userID, link}
-	err = r.encoder.Encode(&URLEntry)
+	err := r.encoder.Encode(&URLEntry)
 	if err != nil {
 		return "", err
 	}
 
-	return shortURL, err
+	return shortURL, nil
 }
 
 func (r *LinkRepoFile) GetUserLinks(userID string) ([]URLPair, error) {
