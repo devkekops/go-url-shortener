@@ -8,15 +8,17 @@ import (
 
 type BaseHandler struct {
 	*chi.Mux
-	linkRepo storage.LinkRepository
-	baseURL  string
+	linkRepo  storage.LinkRepository
+	baseURL   string
+	secretKey string
 }
 
-func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string) *BaseHandler {
+func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string, secretKey string) *BaseHandler {
 	bh := &BaseHandler{
-		Mux:      chi.NewMux(),
-		linkRepo: linkRepo,
-		baseURL:  baseURL,
+		Mux:       chi.NewMux(),
+		linkRepo:  linkRepo,
+		baseURL:   baseURL,
+		secretKey: secretKey,
 	}
 
 	bh.Use(middleware.RequestID)
@@ -26,7 +28,7 @@ func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string) *BaseHandle
 
 	bh.Use(middleware.Compress(5))
 	bh.Use(gzipHandle)
-	bh.Use(authHandle)
+	bh.Use(authHandle(bh.secretKey))
 
 	bh.Post("/", bh.shortenLink())
 	bh.Get("/{id}", bh.expandLink())

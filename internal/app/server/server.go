@@ -12,6 +12,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	BaseURL         string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	SecretKey       string
 }
 
 func Serve(cfg *Config) error {
@@ -24,11 +25,11 @@ func Serve(cfg *Config) error {
 			log.Println(err)
 		}
 		defer linkRepo.Close()
-		baseHandler = handlers.NewBaseHandler(linkRepo, cfg.BaseURL)
+		baseHandler = handlers.NewBaseHandler(linkRepo, cfg.BaseURL, cfg.SecretKey)
 
 	} else {
 		linkRepo := storage.NewLinkRepoMemory()
-		baseHandler = handlers.NewBaseHandler(linkRepo, cfg.BaseURL)
+		baseHandler = handlers.NewBaseHandler(linkRepo, cfg.BaseURL, cfg.SecretKey)
 	}
 
 	server := &http.Server{

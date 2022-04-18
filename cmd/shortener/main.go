@@ -10,9 +10,10 @@ import (
 
 func main() {
 	cfg := server.Config{
-		"localhost:8080",
-		"http://localhost:8080",
-		"",
+		ServerAddress:   "localhost:8080",
+		BaseURL:         "http://localhost:8080",
+		FileStoragePath: "",
+		SecretKey:       "asdhkhk1375jwh132",
 	}
 
 	if err := env.Parse(&cfg); err != nil {
