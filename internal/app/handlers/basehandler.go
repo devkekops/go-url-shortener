@@ -34,6 +34,7 @@ func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string, secretKey s
 	bh.Get("/{id}", bh.expandLink())
 	bh.Post("/api/shorten", bh.apiShorten())
 	bh.Get("/api/user/urls", bh.apiUserURLs())
+	bh.Get("/ping", bh.ping())
 
 	return bh
 }

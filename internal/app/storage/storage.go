@@ -19,6 +19,8 @@ type LinkRepository interface {
 	GetLongByShortLink(shortURL string) (string, error)
 	SaveLongLink(link string, userID string) (string, error)
 	GetUserLinks(userID string) ([]URLPair, error)
+	Close() error
+	Ping() error
 }
 
 func base10ToBase62(id int64) string {

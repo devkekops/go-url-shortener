@@ -13,6 +13,7 @@ func main() {
 		ServerAddress:   "localhost:8080",
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "",
+		DatabaseDSN:     "", // "postgres://dmitriy.tereshin@localhost:5432/links"
 		SecretKey:       "asdhkhk1375jwh132",
 	}
 
@@ -23,6 +24,7 @@ func main() {
 	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "server address")
 	flag.StringVar(&cfg.BaseURL, "b", cfg.BaseURL, "base URL")
 	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path")
+	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "database DSN")
 	flag.Parse()
 
 	log.Fatal(server.Serve(&cfg))

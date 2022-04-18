@@ -66,3 +66,11 @@ func (r *LinkRepoMemory) GetUserLinks(userID string) ([]URLPair, error) {
 
 	return userLinks, nil
 }
+
+func (r *LinkRepoMemory) Close() error {
+	return nil
+}
+
+func (r *LinkRepoMemory) Ping() error {
+	return nil
+}

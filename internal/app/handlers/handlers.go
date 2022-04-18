@@ -76,3 +76,16 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
+
+func (bh *BaseHandler) ping() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		err := bh.linkRepo.Ping()
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}

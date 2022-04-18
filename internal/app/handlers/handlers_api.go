@@ -61,7 +61,6 @@ func (bh *BaseHandler) apiUserURLs() http.HandlerFunc {
 			log.Println(err)
 			return
 		}
-		//fmt.Println(userLinks)
 
 		for i := range userLinks {
 			userLinks[i].ShortURL = bh.baseURL + "/" + userLinks[i].ShortURL
