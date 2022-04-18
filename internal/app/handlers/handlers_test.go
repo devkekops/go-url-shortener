@@ -38,7 +38,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 func TestServer(t *testing.T) {
 	linkRepo := storage.NewLinkRepoMemory()
-	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080")
+	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080", "secret")
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
