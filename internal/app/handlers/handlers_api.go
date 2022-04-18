@@ -71,7 +71,7 @@ func (bh *BaseHandler) apiUserURLs() http.HandlerFunc {
 		json.NewEncoder(&buf).Encode(userLinks)
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusOK)
 		w.Write(buf.Bytes())
 	}
 }

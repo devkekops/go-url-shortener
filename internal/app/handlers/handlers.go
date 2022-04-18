@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -29,7 +28,7 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		userIDctx := req.Context().Value(userIDKey)
 		userID := userIDctx.(string)
-		fmt.Printf("from shortenLink %s\n", userID)
+		//fmt.Printf("from shortenLink %s\n", userID)
 
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
