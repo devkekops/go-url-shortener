@@ -162,6 +162,7 @@ func TestServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, tt.method, tt.path, tt.body)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tt.want.code, resp.StatusCode)
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))

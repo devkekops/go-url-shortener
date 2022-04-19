@@ -13,7 +13,7 @@ func main() {
 		ServerAddress:   "localhost:8080",
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "",
-		DatabaseDSN:     "", // "postgres://dmitriy.tereshin@localhost:5432/links"
+		DatabaseDSN:     "", // "postgres://localhost:5432/links"
 		SecretKey:       "asdhkhk1375jwh132",
 	}
 
