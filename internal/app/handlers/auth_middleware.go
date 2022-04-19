@@ -12,10 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type key string
+
 var (
-	cookieName = "token"
-	cookiePath = "/"
-	userIDKey  = "userID"
+	cookieName     = "token"
+	cookiePath     = "/"
+	userIDKey  key = "userID"
 )
 
 type Token struct {
@@ -44,6 +46,9 @@ func checkSignature(cookieValue string, secretKey []byte) (string, error) {
 	}
 
 	id, err := uuid.FromBytes(token[:16])
+	if err != nil {
+		return "", err
+	}
 	key := sha256.Sum256(secretKey)
 
 	h := hmac.New(sha256.New, key[:])
