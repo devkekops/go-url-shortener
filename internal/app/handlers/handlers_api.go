@@ -107,7 +107,7 @@ func (bh *BaseHandler) apiShortenBatch() http.HandlerFunc {
 		json.NewEncoder(&buf).Encode(shortURLUnits)
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 		w.Write(buf.Bytes())
 	}
 }
