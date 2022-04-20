@@ -10,7 +10,7 @@ import (
 )
 
 type LinkRepoDB struct {
-	dbpool *pgxpool.Pool
+	dbpool *pgxpool.Pool //concurrency safe (see https://github.com/jackc/pgx/wiki/Getting-started-with-pgx#using-a-connection-pool)
 }
 
 func NewLinkRepoDB(dsn string) (*LinkRepoDB, error) {
@@ -63,6 +63,22 @@ func (r *LinkRepoDB) SaveLongLink(link string, userID string) (string, error) {
 	shortURL := base10ToBase62(linkID)
 
 	return shortURL, nil
+}
+
+func (r *LinkRepoDB) SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error) {
+	// prepared statements in pgx: https://github.com/jackc/pgx/issues/791
+	// batch insert in pgx: https://github.com/jackc/pgx/issues/82
+	var shortURLUnits []ShortURLUnit
+
+	for _, longURLUnit := range longURLUnits {
+		shortURL, err := r.SaveLongLink(longURLUnit.OriginalURL, userID)
+		if err != nil {
+			return nil, err
+		}
+		shortURLUnits = append(shortURLUnits, ShortURLUnit{longURLUnit.CorrelationID, shortURL})
+	}
+
+	return shortURLUnits, nil
 }
 
 func (r *LinkRepoDB) GetUserLinks(userID string) ([]URLPair, error) {

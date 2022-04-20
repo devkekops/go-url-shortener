@@ -46,6 +46,20 @@ func (r *LinkRepoMemory) SaveLongLink(link string, userID string) (string, error
 	return shortURL, nil
 }
 
+func (r *LinkRepoMemory) SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error) {
+	var shortURLUnits []ShortURLUnit
+
+	for _, longURLUnit := range longURLUnits {
+		shortURL, err := r.SaveLongLink(longURLUnit.OriginalURL, userID)
+		if err != nil {
+			return nil, err
+		}
+		shortURLUnits = append(shortURLUnits, ShortURLUnit{longURLUnit.CorrelationID, shortURL})
+	}
+
+	return shortURLUnits, nil
+}
+
 func (r *LinkRepoMemory) GetUserLinks(userID string) ([]URLPair, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()

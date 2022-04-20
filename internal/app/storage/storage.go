@@ -15,9 +15,20 @@ type URLPair struct {
 	OriginalURL string `json:"original_url"`
 }
 
+type LongURLUnit struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type ShortURLUnit struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 type LinkRepository interface {
 	GetLongByShortLink(shortURL string) (string, error)
 	SaveLongLink(link string, userID string) (string, error)
+	SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error)
 	GetUserLinks(userID string) ([]URLPair, error)
 	Close() error
 	Ping() error

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/devkekops/go-url-shortener/internal/app/storage"
 )
 
 type URL struct {
@@ -68,6 +70,41 @@ func (bh *BaseHandler) apiUserURLs() http.HandlerFunc {
 
 		var buf bytes.Buffer
 		json.NewEncoder(&buf).Encode(userLinks)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	}
+}
+
+func (bh *BaseHandler) apiShortenBatch() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		userIDctx := req.Context().Value(userIDKey)
+		userID := userIDctx.(string)
+
+		var longURLUnits []storage.LongURLUnit
+
+		decoder := json.NewDecoder(req.Body)
+		err := decoder.Decode(&longURLUnits)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			log.Printf("Incorrect JSON\n")
+			return
+		}
+
+		shortURLUnits, err := bh.linkRepo.SaveLongLinks(longURLUnits, userID)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		for i := range shortURLUnits {
+			shortURLUnits[i].ShortURL = bh.baseURL + "/" + shortURLUnits[i].ShortURL
+		}
+
+		var buf bytes.Buffer
+		json.NewEncoder(&buf).Encode(shortURLUnits)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

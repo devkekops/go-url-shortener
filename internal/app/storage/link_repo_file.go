@@ -62,6 +62,20 @@ func (r *LinkRepoFile) SaveLongLink(link string, userID string) (string, error) 
 	return shortURL, nil
 }
 
+func (r *LinkRepoFile) SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error) {
+	var shortURLUnits []ShortURLUnit
+
+	for _, longURLUnit := range longURLUnits {
+		shortURL, err := r.SaveLongLink(longURLUnit.OriginalURL, userID)
+		if err != nil {
+			return nil, err
+		}
+		shortURLUnits = append(shortURLUnits, ShortURLUnit{longURLUnit.CorrelationID, shortURL})
+	}
+
+	return shortURLUnits, nil
+}
+
 func (r *LinkRepoFile) GetUserLinks(userID string) ([]URLPair, error) {
 	return r.linkRepoMemory.GetUserLinks(userID)
 }
