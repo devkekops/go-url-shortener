@@ -3,10 +3,13 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/devkekops/go-url-shortener/internal/app/storage"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 )
 
 type URL struct {
@@ -37,9 +40,17 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 
 		shortURL, err := bh.linkRepo.SaveLongLink(originalURL, userID)
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Println(err)
-			return
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+			if !pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
 
 		r := Result{bh.baseURL + "/" + shortURL}
@@ -47,7 +58,11 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 		json.NewEncoder(&buf).Encode(r)
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		if err == nil {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
 		w.Write(buf.Bytes())
 	}
 }
