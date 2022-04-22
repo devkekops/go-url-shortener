@@ -116,7 +116,13 @@ func (r *LinkRepoDB) SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([
 	for _, longURLUnit := range longURLUnits {
 		shortURL, err := r.SaveLongLink(longURLUnit.OriginalURL, userID)
 		if err != nil {
-			return nil, err
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) {
+				return nil, err
+			}
+			if !pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				return nil, err
+			}
 		}
 		shortURLUnits = append(shortURLUnits, ShortURLUnit{longURLUnit.CorrelationID, shortURL})
 	}

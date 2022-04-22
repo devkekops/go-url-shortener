@@ -109,7 +109,7 @@ func (bh *BaseHandler) apiShortenBatch() http.HandlerFunc {
 
 		shortURLUnits, err := bh.linkRepo.SaveLongLinks(longURLUnits, userID)
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
