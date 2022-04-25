@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -9,39 +8,10 @@ import (
 	"testing"
 
 	"github.com/devkekops/go-url-shortener/internal/app/handlers"
+	"github.com/devkekops/go-url-shortener/internal/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type MockedLinkRepo struct {
-	idToLinkMap map[int64]string
-}
-
-func NewMockedLinkRepo() *MockedLinkRepo {
-	return &MockedLinkRepo{
-		idToLinkMap: make(map[int64]string),
-	}
-}
-
-func (mr *MockedLinkRepo) FindByID(id int64) (string, error) {
-	url, exist := mr.idToLinkMap[id]
-	if exist == false {
-		return "", fmt.Errorf("not found row %d", id)
-	}
-	//fmt.Printf("FindById %d url %s\n", id, url)
-	//fmt.Println(mr.idToLinkMap)
-
-	return url, nil
-}
-
-func (mr *MockedLinkRepo) Save(link string) (int64, error) {
-	index := len(mr.idToLinkMap) + 1
-	mr.idToLinkMap[int64(index)] = link
-	//fmt.Printf("Save %s with index %d\n", link, index)
-	//fmt.Println(mr.idToLinkMap)
-
-	return int64(index), nil
-}
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
@@ -67,8 +37,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func TestServer(t *testing.T) {
-	linkRepo := NewMockedLinkRepo()
-	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080")
+	linkRepo := storage.NewLinkRepoMemory()
+	s := handlers.NewBaseHandler(linkRepo, "http://localhost:8080", "secret")
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
@@ -179,10 +149,20 @@ func TestServer(t *testing.T) {
 				body:        "URL is incorrect",
 			},
 		},
+		{
+			name:   "GET /api/user/urls no content",
+			method: "GET",
+			path:   "/api/user/urls",
+			want: want{
+				code:        204,
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, tt.method, tt.path, tt.body)
+			defer resp.Body.Close()
 
 			assert.Equal(t, tt.want.code, resp.StatusCode)
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))

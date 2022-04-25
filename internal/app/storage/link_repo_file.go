@@ -2,22 +2,16 @@ package storage
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"sync"
 )
 
-type URLEntry struct {
-	ID  int64  `json:"id"`
-	URL string `json:"url"`
-}
-
 type LinkRepoFile struct {
-	mutex       sync.RWMutex
-	file        *os.File
-	encoder     *json.Encoder
-	idToLinkMap map[int64]string
+	mutex          sync.RWMutex
+	file           *os.File
+	encoder        *json.Encoder
+	linkRepoMemory *LinkRepoMemory
 }
 
 func NewLinkRepoFile(filename string) (*LinkRepoFile, error) {
@@ -25,57 +19,71 @@ func NewLinkRepoFile(filename string) (*LinkRepoFile, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	idToLinkMap := make(map[int64]string)
+	linkRepoMemory := NewLinkRepoMemory()
 
 	decoder := json.NewDecoder(file)
 	for {
 		URLEntry := URLEntry{}
-		err := decoder.Decode(&URLEntry)
+		err = decoder.Decode(&URLEntry)
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		idToLinkMap[URLEntry.ID] = URLEntry.URL
+		linkRepoMemory.idToLinkMap[URLEntry.ID] = URLEntry.URL
+		linkRepoMemory.userIDToLinksIDMap[URLEntry.UserID] = append(linkRepoMemory.userIDToLinksIDMap[URLEntry.UserID], URLEntry.ID)
 	}
 
 	return &LinkRepoFile{
-		mutex:       sync.RWMutex{},
-		file:        file,
-		encoder:     json.NewEncoder(file),
-		idToLinkMap: idToLinkMap,
+		mutex:          sync.RWMutex{},
+		file:           file,
+		encoder:        json.NewEncoder(file),
+		linkRepoMemory: linkRepoMemory,
 	}, nil
+}
+
+func (r *LinkRepoFile) GetLongByShortLink(shortURL string) (string, error) {
+	return r.linkRepoMemory.GetLongByShortLink(shortURL)
+}
+
+func (r *LinkRepoFile) SaveLongLink(link string, userID string) (string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	shortURL, _ := r.linkRepoMemory.SaveLongLink(link, userID)
+	linkID := base62ToBase10(shortURL)
+
+	URLEntry := URLEntry{linkID, userID, link}
+	err := r.encoder.Encode(&URLEntry)
+	if err != nil {
+		return "", err
+	}
+
+	return shortURL, nil
+}
+
+func (r *LinkRepoFile) SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error) {
+	var shortURLUnits []ShortURLUnit
+
+	for _, longURLUnit := range longURLUnits {
+		shortURL, err := r.SaveLongLink(longURLUnit.OriginalURL, userID)
+		if err != nil {
+			return nil, err
+		}
+		shortURLUnits = append(shortURLUnits, ShortURLUnit{longURLUnit.CorrelationID, shortURL})
+	}
+
+	return shortURLUnits, nil
+}
+
+func (r *LinkRepoFile) GetUserLinks(userID string) ([]URLPair, error) {
+	return r.linkRepoMemory.GetUserLinks(userID)
 }
 
 func (r *LinkRepoFile) Close() error {
 	return r.file.Close()
 }
 
-func (r *LinkRepoFile) FindByID(id int64) (string, error) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
-	url, exist := r.idToLinkMap[id]
-	if !exist {
-		return "", fmt.Errorf("not found row %d", id)
-	}
-	return url, nil
-}
-
-func (r *LinkRepoFile) Save(link string) (int64, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	index := len(r.idToLinkMap) + 1
-	id := int64(index)
-	r.idToLinkMap[id] = link
-
-	URLEntry := URLEntry{id, link}
-	err := r.encoder.Encode(&URLEntry)
-	if err != nil {
-		return 0, err
-	}
-
-	return id, nil
+func (r *LinkRepoFile) Ping() error {
+	return nil
 }

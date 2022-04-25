@@ -1,34 +1,17 @@
 package handlers
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
+	"errors"
 	"io"
 	"log"
-	"math/big"
 	"net/http"
 	"net/url"
 	"unicode"
 
-	"github.com/devkekops/go-url-shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 )
-
-type URL struct {
-	URL string `json:"url"`
-}
-
-type Result struct {
-	Result string `json:"result"`
-}
-
-type BaseHandler struct {
-	*chi.Mux
-	linkRepo storage.LinkRepository
-	baseURL  string
-}
 
 func isLetterOrNumber(s string) bool {
 	for _, r := range s {
@@ -44,57 +27,11 @@ func isValidURL(s string) bool {
 	return err == nil
 }
 
-func base10ToBase62(id int64) string {
-	str := big.NewInt(id).Text(62)
-	return str
-}
-
-func base62ToBase10(str string) int64 {
-	bigID := new(big.Int)
-	bigID.SetString(str, 62)
-	id := bigID.Int64()
-	return id
-}
-
-func gzipHandle(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Encoding") == "gzip" {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			defer gz.Close()
-			r.Body = gz
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func NewBaseHandler(linkRepo storage.LinkRepository, baseURL string) *BaseHandler {
-	bh := &BaseHandler{
-		Mux:      chi.NewMux(),
-		linkRepo: linkRepo,
-		baseURL:  baseURL,
-	}
-
-	bh.Use(middleware.RequestID)
-	bh.Use(middleware.RealIP)
-	bh.Use(middleware.Logger)
-	bh.Use(middleware.Recoverer)
-
-	bh.Use(middleware.Compress(5))
-	bh.Use(gzipHandle)
-
-	bh.Post("/", bh.shortenLink())
-	bh.Get("/{id}", bh.expandLink())
-	bh.Post("/api/shorten", bh.apiShorten())
-
-	return bh
-}
-
 func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		userIDctx := req.Context().Value(userIDKey)
+		userID := userIDctx.(string)
+
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
@@ -108,16 +45,27 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 			return
 		}
 
-		id, err := bh.linkRepo.Save(originalURL)
+		shortURL, err := bh.linkRepo.SaveLongLink(originalURL, userID)
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Println(err)
-			return
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
+			if !pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				log.Println(err)
+				return
+			}
 		}
-		shortURL := base10ToBase62(id)
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
+		if err == nil {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
 		w.Write([]byte(bh.baseURL + "/" + shortURL))
 	}
 }
@@ -131,11 +79,10 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 			return
 		}
 
-		id := base62ToBase10(shortURL)
-		url, err := bh.linkRepo.FindByID(id)
+		url, err := bh.linkRepo.GetLongByShortLink(shortURL)
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
-			log.Printf("Not found row number %d\n", id)
+			log.Println(err)
 			return
 		}
 
@@ -144,35 +91,15 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 	}
 }
 
-func (bh *BaseHandler) apiShorten() http.HandlerFunc {
+func (bh *BaseHandler) ping() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var link URL
-		if err := json.NewDecoder(req.Body).Decode(&link); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Printf("Incorrect JSON\n")
-			return
-		}
-		originalURL := link.URL
-		if !isValidURL(originalURL) {
-			http.Error(w, "URL is incorrect", http.StatusBadRequest)
-			log.Printf("Incorrect URL %s\n", originalURL)
-			return
-		}
-
-		id, err := bh.linkRepo.Save(originalURL)
+		err := bh.linkRepo.Ping()
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			log.Println(err)
 			return
 		}
-		shortURL := base10ToBase62(id)
 
-		r := Result{bh.baseURL + "/" + shortURL}
-		var buf bytes.Buffer
-		json.NewEncoder(&buf).Encode(r)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write(buf.Bytes())
+		w.WriteHeader(http.StatusOK)
 	}
 }
