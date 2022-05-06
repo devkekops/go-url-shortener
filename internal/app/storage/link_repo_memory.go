@@ -1,8 +1,9 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
+
+	"github.com/devkekops/go-url-shortener/internal/app/myerrors"
 )
 
 type LinkRepoMemory struct {
@@ -27,7 +28,7 @@ func (r *LinkRepoMemory) GetLongByShortLink(shortURL string) (string, error) {
 
 	url, exist := r.idToLinkMap[linkID]
 	if !exist {
-		return "", fmt.Errorf("not found shortURL %s (linkID %d)", shortURL, linkID)
+		return "", myerrors.NewNotFoundURLError(shortURL)
 	}
 	return url, nil
 }
@@ -66,7 +67,7 @@ func (r *LinkRepoMemory) GetUserLinks(userID string) ([]URLPair, error) {
 
 	userLinkIDs, exist := r.userIDToLinksIDMap[userID]
 	if !exist {
-		return nil, fmt.Errorf("not found URLs for userID %s", userID)
+		return nil, myerrors.NewUserHasNoURLsError(userID)
 	}
 
 	userLinks := make([]URLPair, len(userLinkIDs))

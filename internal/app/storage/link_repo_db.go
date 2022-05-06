@@ -3,13 +3,14 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/devkekops/go-url-shortener/internal/app/myerrors"
 )
 
 type LinkRepoDB struct {
@@ -26,7 +27,8 @@ func NewLinkRepoDB(dsn string) (*LinkRepoDB, error) {
 	queryCreateTableURLs := `
 	CREATE TABLE IF NOT EXISTS urls(
 		id          SERIAL PRIMARY KEY,
-		url 		TEXT NOT NULL UNIQUE
+		url 		TEXT NOT NULL UNIQUE,
+		deleted		BOOLEAN NOT NULL DEFAULT FALSE
 	);`
 
 	queryCreateTableUserURLs := `
@@ -60,16 +62,23 @@ func NewLinkRepoDB(dsn string) (*LinkRepoDB, error) {
 
 func (r *LinkRepoDB) GetLongByShortLink(shortURL string) (string, error) {
 	linkID := base62ToBase10(shortURL)
-	var url string
-	queryGetLink := `SELECT url FROM urls WHERE id = $1`
+	var (
+		url     string
+		deleted bool
+	)
+	queryGetLink := `SELECT url, deleted FROM urls WHERE id = $1`
 
-	err := r.dbpool.QueryRow(context.Background(), queryGetLink, linkID).Scan(&url)
+	err := r.dbpool.QueryRow(context.Background(), queryGetLink, linkID).Scan(&url, &deleted)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", fmt.Errorf("not found shortURL %s (linkID %d)", shortURL, linkID)
+			return "", myerrors.NewNotFoundURLError(shortURL)
 		} else {
 			return "", err
 		}
+	}
+
+	if deleted {
+		return "", myerrors.NewDeletedURLError(url)
 	}
 
 	return url, nil
@@ -160,7 +169,7 @@ func (r *LinkRepoDB) GetUserLinks(userID string) ([]URLPair, error) {
 	}
 
 	if userLinks == nil {
-		return nil, fmt.Errorf("not found URLs for userID %s", userID)
+		return nil, myerrors.NewUserHasNoURLsError(userID)
 	}
 
 	return userLinks, nil

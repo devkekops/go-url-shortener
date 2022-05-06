@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/devkekops/go-url-shortener/internal/app/myerrors"
 	"github.com/devkekops/go-url-shortener/internal/app/storage"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -27,14 +29,16 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 		var link URL
 
 		if err := json.NewDecoder(req.Body).Decode(&link); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Printf("Incorrect JSON\n")
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 		originalURL := link.URL
-		if !isValidURL(originalURL) {
-			http.Error(w, "URL is incorrect", http.StatusBadRequest)
-			log.Printf("Incorrect URL %s\n", originalURL)
+
+		if err := checkLongURL(originalURL); err != nil {
+			iue := err.(*myerrors.InvalidURLError)
+			http.Error(w, iue.ExternalMessage, iue.StatusCode)
+			log.Println(err)
 			return
 		}
 
@@ -42,12 +46,12 @@ func (bh *BaseHandler) apiShorten() http.HandlerFunc {
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				log.Println(err)
 				return
 			}
 			if !pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				log.Println(err)
 				return
 			}
@@ -74,9 +78,16 @@ func (bh *BaseHandler) apiUserURLs() http.HandlerFunc {
 
 		userLinks, err := bh.linkRepo.GetUserLinks(userID)
 		if err != nil {
-			http.Error(w, "Not found URLs", http.StatusNoContent)
-			log.Println(err)
-			return
+			var userHasNoURLsError *myerrors.UserHasNoURLsError
+			if errors.As(err, &userHasNoURLsError) {
+				http.Error(w, userHasNoURLsError.ExternalMessage, userHasNoURLsError.StatusCode)
+				log.Println(err)
+				return
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				log.Println(err)
+				return
+			}
 		}
 
 		for i := range userLinks {
@@ -102,14 +113,14 @@ func (bh *BaseHandler) apiShortenBatch() http.HandlerFunc {
 		decoder := json.NewDecoder(req.Body)
 		err := decoder.Decode(&longURLUnits)
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Printf("Incorrect JSON\n")
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			log.Println(err)
 			return
 		}
 
 		shortURLUnits, err := bh.linkRepo.SaveLongLinks(longURLUnits, userID)
 		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
@@ -124,5 +135,17 @@ func (bh *BaseHandler) apiShortenBatch() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		w.Write(buf.Bytes())
+	}
+}
+
+func (bh *BaseHandler) apiDeleteUserURLs() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		userIDctx := req.Context().Value(userIDKey)
+		userID := userIDctx.(string)
+
+		fmt.Println(userID)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

@@ -11,20 +11,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
+
+	"github.com/devkekops/go-url-shortener/internal/app/myerrors"
 )
 
-func isLetterOrNumber(s string) bool {
+func checkShortURL(s string) error {
 	for _, r := range s {
 		if !unicode.IsLetter(r) && !unicode.IsNumber(r) {
-			return false
+			return myerrors.NewInvalidURLError(s)
 		}
 	}
-	return true
+	return nil
 }
 
-func isValidURL(s string) bool {
+func checkLongURL(s string) error {
 	_, err := url.ParseRequestURI(s)
-	return err == nil
+	if err != nil {
+		return myerrors.NewInvalidURLError(s)
+	} else {
+		return nil
+	}
 }
 
 func (bh *BaseHandler) shortenLink() http.HandlerFunc {
@@ -34,14 +40,16 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 
 		b, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
 		originalURL := string(b)
-		if !isValidURL(originalURL) {
-			http.Error(w, "URL is incorrect", http.StatusBadRequest)
-			log.Printf("Incorrect URL %s\n", originalURL)
+
+		if err = checkLongURL(originalURL); err != nil {
+			iue := err.(*myerrors.InvalidURLError)
+			http.Error(w, iue.ExternalMessage, iue.StatusCode)
+			log.Println(err)
 			return
 		}
 
@@ -49,12 +57,12 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if !errors.As(err, &pgErr) {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				log.Println(err)
 				return
 			}
 			if !pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				log.Println(err)
 				return
 			}
@@ -73,15 +81,27 @@ func (bh *BaseHandler) shortenLink() http.HandlerFunc {
 func (bh *BaseHandler) expandLink() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		shortURL := chi.URLParam(req, "id")
-		if !isLetterOrNumber(shortURL) {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			log.Printf("Incorrect URL %s\n", shortURL)
+
+		if err := checkShortURL(shortURL); err != nil {
+			iue := err.(*myerrors.InvalidURLError)
+			http.Error(w, iue.ExternalMessage, iue.StatusCode)
+			log.Println(err)
 			return
 		}
 
 		url, err := bh.linkRepo.GetLongByShortLink(shortURL)
 		if err != nil {
-			http.Error(w, "Not found", http.StatusNotFound)
+			var notFoundURLError *myerrors.NotFoundURLError
+			var deletedURLError *myerrors.DeletedURLError
+
+			if errors.As(err, &notFoundURLError) {
+				http.Error(w, notFoundURLError.ExternalMessage, notFoundURLError.StatusCode)
+			} else if errors.As(err, &deletedURLError) {
+				http.Error(w, deletedURLError.ExternalMessage, deletedURLError.StatusCode)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
 			log.Println(err)
 			return
 		}
@@ -95,7 +115,7 @@ func (bh *BaseHandler) ping() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := bh.linkRepo.Ping()
 		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
