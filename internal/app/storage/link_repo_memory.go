@@ -82,6 +82,9 @@ func (r *LinkRepoMemory) GetUserLinks(userID string) ([]URLPair, error) {
 	return userLinks, nil
 }
 
+func (r *LinkRepoMemory) DeleteUserLinks(userID string, shortURLs []string) {
+}
+
 func (r *LinkRepoMemory) Close() error {
 	return nil
 }

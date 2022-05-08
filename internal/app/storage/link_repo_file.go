@@ -80,6 +80,9 @@ func (r *LinkRepoFile) GetUserLinks(userID string) ([]URLPair, error) {
 	return r.linkRepoMemory.GetUserLinks(userID)
 }
 
+func (r *LinkRepoFile) DeleteUserLinks(userID string, shortURLs []string) {
+}
+
 func (r *LinkRepoFile) Close() error {
 	return r.file.Close()
 }

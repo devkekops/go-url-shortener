@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -81,13 +81,11 @@ func (bh *BaseHandler) apiUserURLs() http.HandlerFunc {
 			var userHasNoURLsError *myerrors.UserHasNoURLsError
 			if errors.As(err, &userHasNoURLsError) {
 				http.Error(w, userHasNoURLsError.ExternalMessage, userHasNoURLsError.StatusCode)
-				log.Println(err)
-				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
-				log.Println(err)
-				return
 			}
+			log.Println(err)
+			return
 		}
 
 		for i := range userLinks {
@@ -143,7 +141,22 @@ func (bh *BaseHandler) apiDeleteUserURLs() http.HandlerFunc {
 		userIDctx := req.Context().Value(userIDKey)
 		userID := userIDctx.(string)
 
-		fmt.Println(userID)
+		b, err := io.ReadAll(req.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		var shortURLs []string
+		err = json.Unmarshal(b, &shortURLs)
+		if err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			log.Println(err)
+			return
+		}
+
+		bh.linkRepo.DeleteUserLinks(userID, shortURLs)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)

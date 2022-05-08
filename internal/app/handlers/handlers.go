@@ -94,14 +94,14 @@ func (bh *BaseHandler) expandLink() http.HandlerFunc {
 			var notFoundURLError *myerrors.NotFoundURLError
 			var deletedURLError *myerrors.DeletedURLError
 
-			if errors.As(err, &notFoundURLError) {
+			switch {
+			case errors.As(err, &notFoundURLError):
 				http.Error(w, notFoundURLError.ExternalMessage, notFoundURLError.StatusCode)
-			} else if errors.As(err, &deletedURLError) {
+			case errors.As(err, &deletedURLError):
 				http.Error(w, deletedURLError.ExternalMessage, deletedURLError.StatusCode)
-			} else {
+			default:
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-
 			log.Println(err)
 			return
 		}
