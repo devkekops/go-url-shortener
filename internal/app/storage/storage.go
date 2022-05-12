@@ -30,6 +30,7 @@ type LinkRepository interface {
 	SaveLongLink(link string, userID string) (string, error)
 	SaveLongLinks(longURLUnits []LongURLUnit, userID string) ([]ShortURLUnit, error)
 	GetUserLinks(userID string) ([]URLPair, error)
+	DeleteUserLinks(userID string, shortURLs []string)
 	Close() error
 	Ping() error
 }

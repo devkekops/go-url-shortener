@@ -68,14 +68,14 @@ func TestServer(t *testing.T) {
 			},
 		},
 		{
-			name:   "POST / incorrect URL",
+			name:   "POST / invalid URL",
 			method: "POST",
 			path:   "/",
 			body:   "http/yandexru",
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
-				body:        "URL is incorrect",
+				body:        "Invalid URL",
 			},
 		},
 		{
@@ -94,7 +94,7 @@ func TestServer(t *testing.T) {
 			want: want{
 				code:        404,
 				contentType: "text/plain; charset=utf-8",
-				body:        "Not found",
+				body:        "Not found URL",
 			},
 		},
 		{
@@ -104,7 +104,7 @@ func TestServer(t *testing.T) {
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
-				body:        "Bad request",
+				body:        "Invalid URL",
 			},
 		},
 		{
@@ -135,18 +135,18 @@ func TestServer(t *testing.T) {
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
-				body:        "Bad request",
+				body:        "Invalid JSON",
 			},
 		},
 		{
-			name:   "POST /api/shorten incorrect URL",
+			name:   "POST /api/shorten invalid URL",
 			method: "POST",
 			path:   "/api/shorten",
 			body:   `{"url":"http/sberbankru"}`,
 			want: want{
 				code:        400,
 				contentType: "text/plain; charset=utf-8",
-				body:        "URL is incorrect",
+				body:        "Invalid URL",
 			},
 		},
 		{
